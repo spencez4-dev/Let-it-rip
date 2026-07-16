@@ -18,7 +18,9 @@ const DEFAULTS = {
   selectedRig: 'starter-semi',
   theme: 'light',
   sound: true,
-  particles: true
+  soundStyle: 'engine',
+  particles: true,
+  lastRecapDate: ''
 };
 
 const RIGS = [
@@ -114,7 +116,10 @@ const state = {
 
 let audioContext = null;
 let previousHourKey = currentHourKey();
+let previousDayKey = todayKey();
 let toastTimer = null;
+let activeChartPeriod = 'daily';
+let currentSummaryDate = todayKey();
 
 function saveState() {
   const clean = {
@@ -294,6 +299,7 @@ function renderAll() {
   $('dailyGoalInput').value = state.dailyGoal;
   $('hourlyGoalInput').value = state.hourlyGoal;
   $('minutesInput').value = state.minutesPerUpdate;
+  $('soundStyleSelect').value = state.soundStyle || 'engine';
 
   applyTheme();
   renderLog();
@@ -412,34 +418,66 @@ function animateCount(delta) {
   }
 }
 
-function playTone(kind = 'plus', special = false) {
-  if (!state.sound) {
+function createOscillator(frequency, type, start, duration, volume = .06) {
+  audioContext ||= new (window.AudioContext || window.webkitAudioContext)();
+
+  const oscillator = audioContext.createOscillator();
+  const gain = audioContext.createGain();
+
+  oscillator.type = type;
+  oscillator.frequency.setValueAtTime(frequency, start);
+  gain.gain.setValueAtTime(.0001, start);
+  gain.gain.exponentialRampToValueAtTime(volume, start + .008);
+  gain.gain.exponentialRampToValueAtTime(.0001, start + duration);
+
+  oscillator.connect(gain).connect(audioContext.destination);
+  oscillator.start(start);
+  oscillator.stop(start + duration + .02);
+
+  return oscillator;
+}
+
+function playTone(kind = 'plus', special = false, forcePreview = false) {
+  if (!state.sound && !forcePreview) {
     return;
   }
 
   audioContext ||= new (window.AudioContext || window.webkitAudioContext)();
-
   const now = audioContext.currentTime;
-  const oscillator = audioContext.createOscillator();
-  const gain = audioContext.createGain();
+  const style = state.soundStyle || 'engine';
 
-  oscillator.type = kind === 'plus' ? 'sine' : 'triangle';
-  oscillator.frequency.setValueAtTime(
-    special ? 690 : kind === 'plus' ? 520 : 270,
-    now
-  );
-  oscillator.frequency.exponentialRampToValueAtTime(
-    special ? 1040 : kind === 'plus' ? 790 : 205,
-    now + .09
-  );
+  if (special) {
+    [0, .07, .15].forEach((offset, index) => {
+      createOscillator(660 + index * 150, 'sine', now + offset, .17, .085);
+    });
+    return;
+  }
 
-  gain.gain.setValueAtTime(.0001, now);
-  gain.gain.exponentialRampToValueAtTime(special ? .10 : .06, now + .008);
-  gain.gain.exponentialRampToValueAtTime(.0001, now + .14);
+  if (style === 'engine') {
+    const oscillator = createOscillator(kind === 'plus' ? 135 : 105, 'sawtooth', now, .18, .045);
+    oscillator.frequency.exponentialRampToValueAtTime(
+      kind === 'plus' ? 280 : 72,
+      now + .16
+    );
+    return;
+  }
 
-  oscillator.connect(gain).connect(audioContext.destination);
-  oscillator.start(now);
-  oscillator.stop(now + .15);
+  if (style === 'arcade') {
+    const first = kind === 'plus' ? 520 : 260;
+    const second = kind === 'plus' ? 780 : 180;
+    createOscillator(first, 'square', now, .08, .04);
+    createOscillator(second, 'square', now + .07, .09, .035);
+    return;
+  }
+
+  if (style === 'chime') {
+    const base = kind === 'plus' ? 640 : 360;
+    createOscillator(base, 'sine', now, .20, .06);
+    createOscillator(base * 1.5, 'sine', now + .035, .22, .035);
+    return;
+  }
+
+  createOscillator(kind === 'plus' ? 720 : 330, 'triangle', now, .07, .05);
 }
 
 function particleBurst(source, amount = 14, scale = 1) {
@@ -620,6 +658,17 @@ function closeDialog(dialog) {
 
 function tickClock() {
   const key = currentHourKey();
+  const day = todayKey();
+
+  if (day !== previousDayKey) {
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    previousDayKey = day;
+    state.lastRecapDate = day;
+    saveState();
+    renderAll();
+    showDaySummary(yesterday);
+  }
 
   if (key !== previousHourKey) {
     previousHourKey = key;
@@ -630,11 +679,246 @@ function tickClock() {
   $('countdown').textContent = formatCountdown(secondsUntilNextHour());
 }
 
+
+function dateAtStart(date) {
+  const copy = new Date(date);
+  copy.setHours(0, 0, 0, 0);
+  return copy;
+}
+
+function netForDate(date) {
+  const key = todayKey(date);
+  return Math.max(0, netTotal(state.log.filter(entry => todayKey(new Date(entry.time)) === key)));
+}
+
+function netForRange(start, end) {
+  return Math.max(0, netTotal(state.log.filter(entry => {
+    const time = new Date(entry.time);
+    return time >= start && time < end;
+  })));
+}
+
+function buildChartData(period) {
+  const now = new Date();
+  const rows = [];
+
+  if (period === 'daily') {
+    for (let index = 13; index >= 0; index -= 1) {
+      const date = dateAtStart(now);
+      date.setDate(date.getDate() - index);
+      rows.push({
+        label: new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' }).format(date),
+        value: netForDate(date)
+      });
+    }
+  } else if (period === 'weekly') {
+    for (let index = 7; index >= 0; index -= 1) {
+      const end = dateAtStart(now);
+      end.setDate(end.getDate() - index * 7 + 1);
+      const start = new Date(end);
+      start.setDate(start.getDate() - 7);
+      rows.push({
+        label: new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' }).format(start),
+        value: netForRange(start, end)
+      });
+    }
+  } else {
+    for (let index = 11; index >= 0; index -= 1) {
+      const start = new Date(now.getFullYear(), now.getMonth() - index, 1);
+      const end = new Date(now.getFullYear(), now.getMonth() - index + 1, 1);
+      rows.push({
+        label: new Intl.DateTimeFormat(undefined, { month: 'short' }).format(start),
+        value: netForRange(start, end)
+      });
+    }
+  }
+
+  return rows;
+}
+
+function renderInsights(period = activeChartPeriod) {
+  activeChartPeriod = period;
+
+  document.querySelectorAll('.period-tab').forEach(button => {
+    button.classList.toggle('active', button.dataset.period === period);
+  });
+
+  const rows = buildChartData(period);
+  const values = rows.map(row => row.value);
+  const total = values.reduce((sum, value) => sum + value, 0);
+  const average = rows.length ? Math.round(total / rows.length) : 0;
+  const best = Math.max(0, ...values);
+
+  $('chartTotal').textContent = total;
+  $('chartAverage').textContent = average;
+  $('chartBest').textContent = best;
+
+  const svg = $('insightsChart');
+  const width = 760;
+  const height = 300;
+  const left = 48;
+  const right = 18;
+  const top = 20;
+  const bottom = 48;
+  const plotWidth = width - left - right;
+  const plotHeight = height - top - bottom;
+  const maxValue = Math.max(5, best);
+  const pointGap = rows.length > 1 ? plotWidth / (rows.length - 1) : plotWidth;
+
+  const points = rows.map((row, index) => {
+    const x = left + index * pointGap;
+    const y = top + plotHeight - (row.value / maxValue) * plotHeight;
+    return { ...row, x, y };
+  });
+
+  let markup = '';
+
+  for (let step = 0; step <= 4; step += 1) {
+    const y = top + (plotHeight / 4) * step;
+    const value = Math.round(maxValue - (maxValue / 4) * step);
+    markup += `<line class="chart-grid-line" x1="${left}" y1="${y}" x2="${width-right}" y2="${y}"></line>`;
+    markup += `<text class="chart-axis-label" x="${left-10}" y="${y+4}" text-anchor="end">${value}</text>`;
+  }
+
+  const linePoints = points.map(point => `${point.x},${point.y}`).join(' ');
+  const areaPoints = `${left},${top+plotHeight} ${linePoints} ${width-right},${top+plotHeight}`;
+
+  markup += `<polygon class="chart-area" points="${areaPoints}"></polygon>`;
+  markup += `<polyline class="chart-line" points="${linePoints}"></polyline>`;
+
+  points.forEach((point, index) => {
+    markup += `<circle class="chart-dot" cx="${point.x}" cy="${point.y}" r="5"></circle>`;
+
+    const showLabel = rows.length <= 8 || index % 2 === 0 || index === rows.length - 1;
+    if (showLabel) {
+      markup += `<text class="chart-axis-label" x="${point.x}" y="${height-18}" text-anchor="middle">${point.label}</text>`;
+    }
+  });
+
+  svg.innerHTML = markup;
+
+  const periodName = period === 'daily'
+    ? 'the last 14 days'
+    : period === 'weekly'
+      ? 'the last 8 weeks'
+      : 'the last 12 months';
+
+  $('chartCaption').textContent = `${total} net loads across ${periodName}.`;
+}
+
+function hourlyTotalsForDate(date) {
+  const key = todayKey(date);
+  const totals = Array.from({ length: 24 }, () => 0);
+
+  state.log.forEach(entry => {
+    const entryDate = new Date(entry.time);
+    if (todayKey(entryDate) !== key) return;
+    totals[entryDate.getHours()] += entry.delta;
+  });
+
+  return totals.map(value => Math.max(0, value));
+}
+
+function showDaySummary(date = new Date()) {
+  const selected = dateAtStart(date);
+  currentSummaryDate = todayKey(selected);
+  const loads = netForDate(selected);
+  const hours = hourlyTotalsForDate(selected);
+  const best = Math.max(0, ...hours);
+  const goalPercent = Math.min(100, Math.round((loads / Math.max(1, state.dailyGoal)) * 100));
+
+  $('summaryDate').textContent = new Intl.DateTimeFormat(undefined, {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric'
+  }).format(selected);
+
+  $('summaryLoads').textContent = loads;
+  $('summaryWork').textContent = formatDuration(loads * state.minutesPerUpdate);
+  $('summaryBestHour').textContent = `${best} loads`;
+  $('summaryGoal').textContent = `${goalPercent}%`;
+  $('summaryXp').textContent = `${loads} XP`;
+
+  if (loads >= state.dailyGoal) {
+    $('summaryVerdict').textContent = 'Day won. Goal crushed. The board never stood a chance.';
+  } else if (goalPercent >= 75) {
+    $('summaryVerdict').textContent = 'Strong shift. You kept the freight moving.';
+  } else if (loads > 0) {
+    $('summaryVerdict').textContent = 'Progress banked. Tomorrow gets another lap.';
+  } else {
+    $('summaryVerdict').textContent = 'No tracked loads for this day.';
+  }
+
+  const maxHour = Math.max(1, best);
+  $('summaryHourlyBars').innerHTML = hours.map((value, hour) => {
+    const height = Math.max(3, Math.round((value / maxHour) * 90));
+    return `<div class="recap-hour-bar" style="height:${height}px" title="${hour}:00 — ${value} loads"></div>`;
+  }).join('');
+
+  openDialog($('summaryDialog'));
+}
+
+function maybeShowAutomaticRecap() {
+  const today = todayKey();
+
+  if (state.lastRecapDate === today) {
+    return;
+  }
+
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+
+  if (netForDate(yesterday) > 0) {
+    state.lastRecapDate = today;
+    saveState();
+    showDaySummary(yesterday);
+  }
+}
+
+function copySummary() {
+  const date = $('summaryDate').textContent;
+  const text = [
+    `Win the Day Recap — ${date}`,
+    `${$('summaryLoads').textContent} net loads tracked`,
+    `Estimated work: ${$('summaryWork').textContent}`,
+    `Best hour: ${$('summaryBestHour').textContent}`,
+    `Goal: ${$('summaryGoal').textContent}`,
+    `XP earned: ${$('summaryXp').textContent}`
+  ].join('\n');
+
+  if (navigator.clipboard?.writeText) {
+    navigator.clipboard.writeText(text)
+      .then(() => showToast('Recap copied'))
+      .catch(() => showToast('Could not copy recap'));
+  } else {
+    showToast('Copy unavailable in this browser');
+  }
+}
+
 function bindEvents() {
   $('plusBtn').addEventListener('click', () => addLoad(1));
   $('minusBtn').addEventListener('click', () => addLoad(-1));
   $('undoBtn').addEventListener('click', undoLast);
   $('exportBtn').addEventListener('click', exportBackup);
+
+  $('insightsBtn').addEventListener('click', () => {
+    renderInsights(activeChartPeriod);
+    openDialog($('insightsDialog'));
+  });
+
+  $('summaryBtn').addEventListener('click', () => showDaySummary(new Date()));
+
+  $('closeInsightsBtn').addEventListener('click', () => closeDialog($('insightsDialog')));
+  $('closeInsightsX').addEventListener('click', () => closeDialog($('insightsDialog')));
+
+  document.querySelectorAll('.period-tab').forEach(button => {
+    button.addEventListener('click', () => renderInsights(button.dataset.period));
+  });
+
+  $('closeSummaryBtn').addEventListener('click', () => closeDialog($('summaryDialog')));
+  $('closeSummaryX').addEventListener('click', () => closeDialog($('summaryDialog')));
+  $('shareSummaryBtn').addEventListener('click', copySummary);
 
   $('themeBtn').addEventListener('click', () => {
     state.theme = state.theme === 'dark' ? 'light' : 'dark';
@@ -657,6 +941,7 @@ function bindEvents() {
     state.dailyGoal = Math.max(1, Number($('dailyGoalInput').value) || DEFAULTS.dailyGoal);
     state.hourlyGoal = Math.max(1, Number($('hourlyGoalInput').value) || DEFAULTS.hourlyGoal);
     state.minutesPerUpdate = Math.max(1, Number($('minutesInput').value) || DEFAULTS.minutesPerUpdate);
+    state.soundStyle = $('soundStyleSelect').value || 'engine';
 
     saveState();
     renderAll();
@@ -668,6 +953,16 @@ function bindEvents() {
     state.sound = !state.sound;
     saveState();
     applyTheme();
+  });
+
+  $('soundStyleSelect').addEventListener('change', () => {
+    state.soundStyle = $('soundStyleSelect').value;
+    saveState();
+  });
+
+  $('previewSoundBtn').addEventListener('click', () => {
+    state.soundStyle = $('soundStyleSelect').value;
+    playTone('plus', false, true);
   });
 
   $('particlesToggle').addEventListener('click', () => {
@@ -741,6 +1036,14 @@ function bindEvents() {
       if ($('settingsDialog').open) {
         closeDialog($('settingsDialog'));
       }
+
+      if ($('insightsDialog').open) {
+        closeDialog($('insightsDialog'));
+      }
+
+      if ($('summaryDialog').open) {
+        closeDialog($('summaryDialog'));
+      }
     }
   });
 }
@@ -791,6 +1094,7 @@ function initialize() {
   renderAll();
   tickClock();
   setInterval(tickClock, 1000);
+  setTimeout(maybeShowAutomaticRecap, 600);
   registerServiceWorker();
 }
 

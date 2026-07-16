@@ -126,6 +126,8 @@
           <h2>Load Log</h2>
         </div>
         <div class="button-row">
+          <button id="insightsBtn" class="secondary-button" type="button">Insights</button>
+          <button id="summaryBtn" class="secondary-button" type="button">Day Recap</button>
           <button id="undoBtn" class="secondary-button" type="button">Undo</button>
           <button id="exportBtn" class="secondary-button" type="button">Export</button>
         </div>
@@ -137,7 +139,7 @@
   <div id="fxLayer" class="fx-layer" aria-hidden="true"></div>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <div id="megaMessage" class="mega-message">CHECKERED FLAG!</div>
-  <div class="build-badge">ULTIMATE BUILD · 1.0</div>
+  <div class="build-badge">LOAD RUSH · V2</div>
 
   <dialog id="garageDialog">
     <div class="dialog-content">
@@ -159,6 +161,69 @@
 
       <div class="dialog-actions">
         <button id="closeGarageBtn" class="primary-button" type="button">Done</button>
+      </div>
+    </div>
+  </dialog>
+
+
+  <dialog id="insightsDialog" class="wide-dialog">
+    <div class="dialog-content">
+      <div class="section-heading">
+        <div>
+          <span class="section-kicker">PERFORMANCE</span>
+          <h2>Load Insights</h2>
+        </div>
+        <button id="closeInsightsX" class="icon-button" type="button" aria-label="Close insights">×</button>
+      </div>
+
+      <div class="period-tabs" role="tablist" aria-label="Chart period">
+        <button class="period-tab active" data-period="daily" type="button">Daily</button>
+        <button class="period-tab" data-period="weekly" type="button">Weekly</button>
+        <button class="period-tab" data-period="monthly" type="button">Monthly</button>
+      </div>
+
+      <div class="insight-metrics">
+        <div class="insight-chip"><span>Total</span><strong id="chartTotal">0</strong></div>
+        <div class="insight-chip"><span>Average</span><strong id="chartAverage">0</strong></div>
+        <div class="insight-chip"><span>Best period</span><strong id="chartBest">0</strong></div>
+      </div>
+
+      <div class="chart-shell">
+        <svg id="insightsChart" viewBox="0 0 760 300" role="img" aria-label="Load tracking history chart"></svg>
+      </div>
+      <div id="chartCaption" class="chart-caption">Your recent load activity.</div>
+
+      <div class="dialog-actions">
+        <button id="closeInsightsBtn" class="primary-button" type="button">Done</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="summaryDialog" class="summary-dialog">
+    <div class="dialog-content recap-content">
+      <button id="closeSummaryX" class="icon-button recap-close" type="button" aria-label="Close summary">×</button>
+      <span class="section-kicker">END OF DAY</span>
+      <h2 id="summaryTitle">Win the Day Recap</h2>
+      <div id="summaryDate" class="recap-date"></div>
+
+      <div class="recap-hero">
+        <div id="summaryLoads" class="recap-big">0</div>
+        <div>net loads tracked</div>
+      </div>
+
+      <div class="recap-grid">
+        <div><span>Estimated work</span><strong id="summaryWork">0 min</strong></div>
+        <div><span>Best hour</span><strong id="summaryBestHour">0</strong></div>
+        <div><span>Goal result</span><strong id="summaryGoal">0%</strong></div>
+        <div><span>XP earned</span><strong id="summaryXp">0 XP</strong></div>
+      </div>
+
+      <div id="summaryVerdict" class="recap-verdict">The board is ready.</div>
+      <div id="summaryHourlyBars" class="recap-hour-bars"></div>
+
+      <div class="dialog-actions">
+        <button id="shareSummaryBtn" class="secondary-button" type="button">Copy recap</button>
+        <button id="closeSummaryBtn" class="primary-button" type="button">Done</button>
       </div>
     </div>
   </dialog>
@@ -191,6 +256,21 @@
       <div class="setting-row">
         <span>Sound effects</span>
         <button id="soundToggle" class="switch" type="button" role="switch" aria-checked="true"></button>
+      </div>
+
+      <label class="setting-row">
+        <span>Sound style</span>
+        <select id="soundStyleSelect">
+          <option value="engine">Engine rev</option>
+          <option value="arcade">Arcade</option>
+          <option value="chime">Chime</option>
+          <option value="click">Clean click</option>
+        </select>
+      </label>
+
+      <div class="setting-row">
+        <span>Preview sound</span>
+        <button id="previewSoundBtn" class="secondary-button" type="button">Play</button>
       </div>
 
       <div class="setting-row">

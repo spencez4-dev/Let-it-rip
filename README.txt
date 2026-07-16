@@ -1,84 +1,41 @@
-LET IT RIP — LOAD RUSH ULTIMATE
+LOAD RUSH V2 — INSIGHTS & DAY RECAP
 
-THIS IS THE CLEAN FINAL REBUILD
-- No horse code or horse art remains.
-- All buttons were rewritten and wired from scratch.
-- The race now moves from RIGHT TO LEFT.
-- Every rig emoji is flipped so it visually faces LEFT.
-- The road has horizontal dashed lane lines.
-- The finish line is on the LEFT.
-- Plus advances the rig left toward the finish.
-- Minus moves the rig backward to the right.
-
-MINUS BUTTON
-Minus subtracts from every live scoring system:
-- Today's net load count
-- Hourly race progress
-- Estimated work time
-- Best-hour calculation
-- Hourly streak qualification
-- Daily goal progress
-- Lifetime XP
-- Level progress
-- XP/level-based unlocks
-
-A previously recorded hourly win remains in the permanent race-win history.
-
-FEATURES
-- Hourly right-to-left road race
-- Adjustable hourly and daily goals
-- Lifetime XP and levels
-- 12 unlockable rigs
-- Garage
-- Dark mode
-- Sound and particle toggles
-- Timestamp log
-- Undo
-- Export/import backups
-- Legacy data migration from older app versions
-- Stronger cache/update behavior
-
-NEW REPOSITORY
-1. Create a new PUBLIC GitHub repository:
-   load-rush-ultimate
-2. Unzip this package.
-3. Upload every file inside the unzipped folder to the repository root.
-4. Commit the files.
-5. Open Settings → Pages.
-6. Choose:
-   Source: Deploy from a branch
-   Branch: main
-   Folder: / (root)
-7. Save and wait 1–2 minutes.
-8. Open:
-   https://YOUR-USERNAME.github.io/load-rush-ultimate/
-
-INSTALL ON MAC
-Open the live website in Safari.
-Choose File → Add to Dock.
-
-FIRST OPEN
-Open the website once with:
-?v=ultimate-1
-
-Example:
-https://YOUR-USERNAME.github.io/load-rush-ultimate/?v=ultimate-1
-
-You should see:
-ULTIMATE BUILD · 1.0
-in the bottom-right corner.
+NEW FEATURES
+- Daily chart: last 14 days
+- Weekly chart: last 8 weeks
+- Monthly chart: last 12 months
+- Total, average, and best-period metrics
+- Manual Day Recap button
+- Automatic previous-day recap the next time the app opens
+- Automatic recap when the date rolls over while the app is open
+- End-of-day stats:
+  - Net loads
+  - Estimated work time
+  - Best hour
+  - Daily goal percentage
+  - XP earned
+  - Hour-by-hour activity bars
+- Copyable recap text
+- Sound selector:
+  - Engine rev
+  - Arcade
+  - Chime
+  - Clean click
+- Sound preview button
 
 DATA
-The app attempts to migrate data from earlier Load Quest / Pulse Counter builds stored on the same website origin.
-A brand-new repository uses a new website origin, so old data from another repository does not automatically transfer.
-Use Export in the old app and Import in this app to move history.
+Charts and recaps are generated from the timestamp log already stored in localStorage.
+Garage unlocks, XP, history, race wins, goals, selected rig, and settings persist between sessions.
 
+UPLOAD
+1. Create or use one final GitHub repository.
+2. Upload every file in this ZIP to the repository root.
+3. Enable GitHub Pages from main / root.
+4. Open once with:
+   ?v=insights-v2
+5. Confirm the bottom-right badge says:
+   LOAD RUSH · V2
 
-DIRECTION FIX — BUILD 1.1
-- Removed the unnecessary horizontal emoji mirror.
-- Vehicle cabs/headlights now face LEFT toward the finish flag.
-- Race progress still moves from RIGHT to LEFT.
-- Garage previews now match the live race direction.
-
-After upload, open once with:
-?v=direction-fix
+IMPORTANT
+Use the same repository URL to preserve current browser data.
+A brand-new repository has a different storage origin; export your old data first and import it into the new app.

@@ -1,4 +1,4 @@
-const CACHE = 'load-rush-ultimate-v2-direction';
+const CACHE = 'load-rush-v2-insights';
 const CORE = [
   './',
   './index.html',
