@@ -422,7 +422,7 @@ input:focus-visible {
   z-index: 5;
   font-size: 4.15rem;
   line-height: 1;
-  transform: translate(50%, -50%) scaleX(-1);
+  transform: translate(50%, -50%);
   transform-origin: center;
   filter: drop-shadow(0 10px 10px rgba(0,0,0,.25));
   transition: right .72s cubic-bezier(.2,.9,.2,1);
@@ -432,10 +432,10 @@ input:focus-visible {
 
 @keyframes vehicleBounce {
   from {
-    transform: translate(50%, -55%) scaleX(-1) rotate(-1deg);
+    transform: translate(50%, -55%) rotate(-1deg);
   }
   to {
-    transform: translate(50%, -46%) scaleX(-1) rotate(1deg);
+    transform: translate(50%, -46%) rotate(1deg);
   }
 }
 
@@ -445,10 +445,10 @@ input:focus-visible {
 
 @keyframes victoryVehicle {
   from {
-    transform: translate(50%, -56%) scaleX(-1) rotate(-5deg) scale(1);
+    transform: translate(50%, -56%) rotate(-5deg) scale(1);
   }
   to {
-    transform: translate(50%, -66%) scaleX(-1) rotate(5deg) scale(1.12);
+    transform: translate(50%, -66%) rotate(5deg) scale(1.12);
   }
 }
 
@@ -793,7 +793,6 @@ dialog::backdrop {
 .rig-icon {
   display: inline-block;
   font-size: 2.55rem;
-  transform: scaleX(-1);
 }
 
 .rig-name {

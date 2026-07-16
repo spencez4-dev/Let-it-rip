@@ -72,3 +72,13 @@ DATA
 The app attempts to migrate data from earlier Load Quest / Pulse Counter builds stored on the same website origin.
 A brand-new repository uses a new website origin, so old data from another repository does not automatically transfer.
 Use Export in the old app and Import in this app to move history.
+
+
+DIRECTION FIX — BUILD 1.1
+- Removed the unnecessary horizontal emoji mirror.
+- Vehicle cabs/headlights now face LEFT toward the finish flag.
+- Race progress still moves from RIGHT to LEFT.
+- Garage previews now match the live race direction.
+
+After upload, open once with:
+?v=direction-fix
