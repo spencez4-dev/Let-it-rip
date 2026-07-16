@@ -20,6 +20,10 @@ const DEFAULTS = {
   sound: true,
   soundStyle: 'engine',
   particles: true,
+  fateEnabled: true,
+  fateFrequency: 10,
+  lastFateMilestone: 0,
+  discoveredEvents: [],
   lastRecapDate: ''
 };
 
@@ -37,6 +41,104 @@ const RIGS = [
   { id: 'alien-dispatch', icon: '🛸', name: 'Alien Dispatch', type: 'MYTHIC', rule: 'Reach Level 25', unlocked: () => lifetimeLevel() >= 25 },
   { id: 'king-freight', icon: '👑', name: 'King of Freight', type: 'MYTHIC SEMI', rule: 'Win 50 hourly races', unlocked: () => state.raceWins >= 50 }
 ];
+
+const FATE_EVENTS = [
+  {
+    id: 'nitro',
+    name: 'Nitro Boost',
+    icon: '🔥',
+    rarity: 'COMMON',
+    weight: 24,
+    description: 'The rig hits the boost and briefly exits the known universe.',
+    sceneClass: 'fate-nitro'
+  },
+  {
+    id: 'rain',
+    name: 'Thunder Run',
+    icon: '🌧️',
+    rarity: 'COMMON',
+    weight: 18,
+    description: 'A dramatic storm rolls in. Dispatch continues anyway.',
+    worldClass: 'fate-rain'
+  },
+  {
+    id: 'cones',
+    name: 'Cone Slalom',
+    icon: '🚧',
+    rarity: 'COMMON',
+    weight: 17,
+    description: 'Construction cones appear. Your driver becomes weirdly athletic.',
+    objects: ['🚧','🚧','🚧','🚧']
+  },
+  {
+    id: 'ducks',
+    name: 'Duck Crossing',
+    icon: '🦆',
+    rarity: 'COMMON',
+    weight: 15,
+    description: 'A family of ducks claims right of way. The rig respectfully waits.',
+    objects: ['🦆','🦆','🦆','🦆','🦆']
+  },
+  {
+    id: 'speedtrap',
+    name: 'Speed Trap',
+    icon: '🚓',
+    rarity: 'RARE',
+    weight: 9,
+    description: 'The rig gets pulled over, then immediately waved through for excellent paperwork.',
+    objects: ['🚓','🚨']
+  },
+  {
+    id: 'ufo',
+    name: 'UFO Abduction',
+    icon: '🛸',
+    rarity: 'RARE',
+    weight: 7,
+    description: 'Aliens borrow the rig for research and return it with a full tank.',
+    sceneClass: 'fate-abduct',
+    objects: ['🛸']
+  },
+  {
+    id: 'tornado',
+    name: 'Freight Tornado',
+    icon: '🌪️',
+    rarity: 'RARE',
+    weight: 5,
+    description: 'The truck spins twice, lands perfectly, and refuses to elaborate.',
+    sceneClass: 'fate-spin',
+    objects: ['🌪️']
+  },
+  {
+    id: 'dino',
+    name: 'Dino Chase',
+    icon: '🦖',
+    rarity: 'EPIC',
+    weight: 2.5,
+    description: 'A T-Rex joins the route. The rig finds another gear.',
+    sceneClass: 'fate-nitro',
+    objects: ['🦖']
+  },
+  {
+    id: 'rainbow',
+    name: 'Rainbow Road',
+    icon: '🌈',
+    rarity: 'EPIC',
+    weight: 1.8,
+    description: 'The highway enters arcade mode for five glorious seconds.',
+    worldClass: 'fate-rainbow',
+    objects: ['⭐','🌈','⭐']
+  },
+  {
+    id: 'ceo',
+    name: 'CEO Visit',
+    icon: '☎️',
+    rarity: 'LEGENDARY',
+    weight: .7,
+    description: 'A mysterious executive calls only to say: “Outstanding work.”',
+    objects: ['☎️','👔','✨']
+  }
+];
+
 
 const $ = id => document.getElementById(id);
 
@@ -120,6 +222,8 @@ let previousDayKey = todayKey();
 let toastTimer = null;
 let activeChartPeriod = 'daily';
 let currentSummaryDate = todayKey();
+let pendingFateMilestone = null;
+let activeFateTimeout = null;
 
 function saveState() {
   const clean = {
@@ -300,6 +404,7 @@ function renderAll() {
   $('hourlyGoalInput').value = state.hourlyGoal;
   $('minutesInput').value = state.minutesPerUpdate;
   $('soundStyleSelect').value = state.soundStyle || 'engine';
+  $('fateFrequencySelect').value = String(state.fateFrequency || 10);
 
   applyTheme();
   renderLog();
@@ -367,6 +472,24 @@ function renderGarage() {
     `;
   }).join('');
 
+
+  const discovered = new Set(state.discoveredEvents || []);
+  $('eventCollectionCount').textContent = `${discovered.size} / ${FATE_EVENTS.length}`;
+
+  $('eventCollectionGrid').innerHTML = FATE_EVENTS.map(event => {
+    const found = discovered.has(event.id);
+
+    return `
+      <div class="event-card ${found ? 'discovered' : ''}">
+        <div class="event-icon">${found ? event.icon : '❔'}</div>
+        <div>
+          <strong>${found ? event.name : 'Undiscovered'}</strong>
+          <span>${found ? event.rarity : 'Keep rolling Freight Fate'}</span>
+        </div>
+      </div>
+    `;
+  }).join('');
+
   document.querySelectorAll('[data-rig-id]').forEach(button => {
     button.addEventListener('click', () => {
       const rig = RIGS.find(item => item.id === button.dataset.rigId);
@@ -395,6 +518,7 @@ function applyTheme() {
 
   updateSwitch('soundToggle', state.sound);
   updateSwitch('particlesToggle', state.particles);
+  updateSwitch('fateToggle', state.fateEnabled);
 }
 
 function updateSwitch(id, enabled) {
@@ -552,6 +676,157 @@ function maybeAwardRace() {
   showToast(`Hourly race won · ${state.raceWins} total`);
 }
 
+
+function weightedFateRoll() {
+  const total = FATE_EVENTS.reduce((sum, event) => sum + event.weight, 0);
+  let roll = Math.random() * total;
+
+  for (const event of FATE_EVENTS) {
+    roll -= event.weight;
+    if (roll <= 0) {
+      return event;
+    }
+  }
+
+  return FATE_EVENTS[0];
+}
+
+function shouldPromptFate() {
+  if (!state.fateEnabled) {
+    return false;
+  }
+
+  const frequency = Math.max(1, Number(state.fateFrequency) || 10);
+  const loads = todayNetLoads();
+
+  if (loads <= 0 || loads % frequency !== 0) {
+    return false;
+  }
+
+  return loads > (state.lastFateMilestone || 0);
+}
+
+function promptFreightFate() {
+  const loads = todayNetLoads();
+
+  pendingFateMilestone = loads;
+  state.lastFateMilestone = loads;
+  saveState();
+
+  $('fatePromptTitle').textContent = `${loads} loads tracked!`;
+  openDialog($('fatePromptDialog'));
+  particleBurst($('mainCount'), 38, 1.3);
+  flashMegaMessage(`${loads} LOADS!`);
+}
+
+function clearFateScene() {
+  clearTimeout(activeFateTimeout);
+  activeFateTimeout = null;
+
+  const world = document.querySelector('.road-world');
+  const vehicle = $('vehicle');
+
+  world.classList.remove('fate-rain', 'fate-rainbow');
+  vehicle.classList.remove('fate-nitro', 'fate-spin', 'fate-abduct', 'fate-bounce');
+  $('fateScene').replaceChildren();
+}
+
+function placeFateObjects(event) {
+  const layer = $('fateScene');
+
+  if (!event.objects?.length) {
+    return;
+  }
+
+  event.objects.forEach((object, index) => {
+    const element = document.createElement('span');
+    element.className = 'fate-object';
+    element.textContent = object;
+    element.style.left = `${14 + (index * 68 / Math.max(1, event.objects.length - 1))}%`;
+    element.style.top = `${20 + (index % 2) * 45}%`;
+    layer.appendChild(element);
+  });
+}
+
+function runFateScene(event) {
+  clearFateScene();
+
+  const world = document.querySelector('.road-world');
+  const vehicle = $('vehicle');
+  const layer = $('fateScene');
+
+  if (event.worldClass) {
+    world.classList.add(event.worldClass);
+  }
+
+  if (event.sceneClass) {
+    vehicle.classList.add(event.sceneClass);
+  }
+
+  placeFateObjects(event);
+
+  const banner = document.createElement('div');
+  banner.className = 'fate-banner';
+  banner.textContent = `${event.icon} ${event.name}`;
+  layer.appendChild(banner);
+
+  if (event.id === 'ducks' || event.id === 'cones' || event.id === 'speedtrap') {
+    vehicle.classList.add('fate-bounce');
+  }
+
+  if (event.rarity === 'EPIC' || event.rarity === 'LEGENDARY') {
+    particleBurst($('vehicle'), event.rarity === 'LEGENDARY' ? 100 : 65, 2);
+  }
+
+  activeFateTimeout = setTimeout(clearFateScene, 5000);
+}
+
+function rollFreightFate() {
+  closeDialog($('fatePromptDialog'));
+  openDialog($('fateResultDialog'));
+
+  const dice = $('rollingDice');
+  dice.classList.add('rolling');
+  $('fateRarity').textContent = 'ROLLING';
+  $('fateEventName').textContent = 'Freight Fate is deciding...';
+  $('fateEventDescription').textContent = 'No amount of dispatch training can prepare you for this.';
+  $('closeFateResultBtn').disabled = true;
+
+  let faces = ['⚀','⚁','⚂','⚃','⚄','⚅'];
+  let faceIndex = 0;
+  const diceInterval = setInterval(() => {
+    dice.textContent = faces[faceIndex % faces.length];
+    faceIndex += 1;
+  }, 110);
+
+  setTimeout(() => {
+    clearInterval(diceInterval);
+    const event = weightedFateRoll();
+
+    dice.classList.remove('rolling');
+    dice.textContent = event.icon;
+    $('fateRarity').textContent = event.rarity;
+    $('fateEventName').textContent = event.name;
+    $('fateEventDescription').textContent = event.description;
+    $('closeFateResultBtn').disabled = false;
+
+    if (!state.discoveredEvents.includes(event.id)) {
+      state.discoveredEvents.push(event.id);
+      saveState();
+      showToast(`New Fate event discovered: ${event.name}`);
+    }
+
+    runFateScene(event);
+    playTone('plus', event.rarity === 'EPIC' || event.rarity === 'LEGENDARY');
+  }, 1500);
+}
+
+function skipFreightFate() {
+  closeDialog($('fatePromptDialog'));
+  pendingFateMilestone = null;
+  showToast('Freight Fate skipped');
+}
+
 function addLoad(delta) {
   state.log.unshift({
     delta,
@@ -588,6 +863,10 @@ function addLoad(delta) {
       flashMegaMessage('SHIFT GOAL CRUSHED!');
       particleBurst($('mainCount'), 100, 2.4);
       showToast('Daily load goal complete');
+    }
+
+    if (shouldPromptFate()) {
+      setTimeout(promptFreightFate, 350);
     }
   } else {
     showToast('Subtracted from every live metric');
@@ -931,6 +1210,13 @@ function bindEvents() {
     openDialog($('garageDialog'));
   });
 
+  $('rollFateBtn').addEventListener('click', rollFreightFate);
+  $('skipFateBtn').addEventListener('click', skipFreightFate);
+  $('closeFateResultBtn').addEventListener('click', () => {
+    closeDialog($('fateResultDialog'));
+    pendingFateMilestone = null;
+  });
+
   $('closeGarageBtn').addEventListener('click', () => closeDialog($('garageDialog')));
   $('closeGarageX').addEventListener('click', () => closeDialog($('garageDialog')));
 
@@ -942,6 +1228,7 @@ function bindEvents() {
     state.hourlyGoal = Math.max(1, Number($('hourlyGoalInput').value) || DEFAULTS.hourlyGoal);
     state.minutesPerUpdate = Math.max(1, Number($('minutesInput').value) || DEFAULTS.minutesPerUpdate);
     state.soundStyle = $('soundStyleSelect').value || 'engine';
+    state.fateFrequency = Math.max(1, Number($('fateFrequencySelect').value) || 10);
 
     saveState();
     renderAll();
@@ -969,6 +1256,17 @@ function bindEvents() {
     state.particles = !state.particles;
     saveState();
     applyTheme();
+  });
+
+  $('fateToggle').addEventListener('click', () => {
+    state.fateEnabled = !state.fateEnabled;
+    saveState();
+    applyTheme();
+  });
+
+  $('fateFrequencySelect').addEventListener('change', () => {
+    state.fateFrequency = Math.max(1, Number($('fateFrequencySelect').value) || 10);
+    saveState();
   });
 
   $('importBtn').addEventListener('click', () => $('importInput').click());
@@ -1043,6 +1341,14 @@ function bindEvents() {
 
       if ($('summaryDialog').open) {
         closeDialog($('summaryDialog'));
+      }
+
+      if ($('fatePromptDialog').open) {
+        skipFreightFate();
+      }
+
+      if ($('fateResultDialog').open) {
+        closeDialog($('fateResultDialog'));
       }
     }
   });

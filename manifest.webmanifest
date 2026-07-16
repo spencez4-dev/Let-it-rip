@@ -1,7 +1,7 @@
 {
   "name": "Let it Rip: Load Rush",
   "short_name": "Load Rush",
-  "description": "A game-like shipment load tracker with hourly races, XP, charts, day recaps, sounds, goals, and timestamped updates.",
+  "description": "A game-like shipment tracker with road races, XP, charts, day recaps, sound styles, and optional Freight Fate dice events.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

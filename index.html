@@ -81,6 +81,7 @@
         </div>
 
         <div id="trophy" class="trophy">🏆</div>
+        <div id="fateScene" class="fate-scene" aria-hidden="true"></div>
       </div>
 
       <div class="race-footer">
@@ -139,7 +140,35 @@
   <div id="fxLayer" class="fx-layer" aria-hidden="true"></div>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <div id="megaMessage" class="mega-message">CHECKERED FLAG!</div>
-  <div class="build-badge">LOAD RUSH · V2</div>
+  <div class="build-badge">LOAD RUSH · V3</div>
+
+
+  <dialog id="fatePromptDialog" class="fate-dialog">
+    <div class="dialog-content fate-dialog-content">
+      <span class="fate-dice-icon">🎲</span>
+      <span class="section-kicker">MILESTONE REACHED</span>
+      <h2 id="fatePromptTitle">10 loads tracked!</h2>
+      <p>Roll Freight Fate for a random road event, or skip it and keep moving.</p>
+
+      <div class="dialog-actions fate-actions">
+        <button id="skipFateBtn" class="secondary-button" type="button">Skip</button>
+        <button id="rollFateBtn" class="primary-button" type="button">🎲 Roll Freight Fate</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="fateResultDialog" class="fate-dialog">
+    <div class="dialog-content fate-dialog-content">
+      <div id="rollingDice" class="rolling-dice">🎲</div>
+      <span id="fateRarity" class="fate-rarity">COMMON</span>
+      <h2 id="fateEventName">Nitro Boost</h2>
+      <p id="fateEventDescription">Your rig hits the boost and disappears into the horizon.</p>
+
+      <div class="dialog-actions">
+        <button id="closeFateResultBtn" class="primary-button" type="button">Continue</button>
+      </div>
+    </div>
+  </dialog>
 
   <dialog id="garageDialog">
     <div class="dialog-content">
@@ -158,6 +187,17 @@
       </div>
 
       <div id="garageGrid" class="garage-grid"></div>
+
+      <div class="fate-collection">
+        <div class="section-heading">
+          <div>
+            <span class="section-kicker">FREIGHT FATE</span>
+            <h2>Event Collection</h2>
+          </div>
+          <div id="eventCollectionCount" class="countdown">0 / 10</div>
+        </div>
+        <div id="eventCollectionGrid" class="event-collection-grid"></div>
+      </div>
 
       <div class="dialog-actions">
         <button id="closeGarageBtn" class="primary-button" type="button">Done</button>
@@ -277,6 +317,20 @@
         <span>Particles</span>
         <button id="particlesToggle" class="switch" type="button" role="switch" aria-checked="true"></button>
       </div>
+
+      <div class="setting-row">
+        <span>Freight Fate</span>
+        <button id="fateToggle" class="switch" type="button" role="switch" aria-checked="true"></button>
+      </div>
+
+      <label class="setting-row">
+        <span>Fate frequency</span>
+        <select id="fateFrequencySelect">
+          <option value="10">Every 10 loads</option>
+          <option value="20">Every 20 loads</option>
+          <option value="50">Every 50 loads</option>
+        </select>
+      </label>
 
       <div class="setting-row">
         <span>Import backup</span>

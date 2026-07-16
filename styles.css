@@ -1284,3 +1284,227 @@ dialog::backdrop {
     padding-right: 7px;
   }
 }
+
+
+.fate-dialog {
+  width: min(92vw, 470px);
+}
+
+.fate-dialog-content {
+  text-align: center;
+}
+
+.fate-dialog-content p {
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.fate-dice-icon,
+.rolling-dice {
+  display: block;
+  font-size: 4.5rem;
+  margin-bottom: 10px;
+}
+
+.rolling-dice.rolling {
+  animation: diceRoll .18s linear infinite;
+}
+
+@keyframes diceRoll {
+  0% { transform: rotate(0deg) scale(.9); }
+  50% { transform: rotate(180deg) scale(1.15); }
+  100% { transform: rotate(360deg) scale(.9); }
+}
+
+.fate-actions {
+  justify-content: center;
+}
+
+.fate-rarity {
+  display: inline-flex;
+  padding: 6px 9px;
+  border-radius: 999px;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  font-weight: 950;
+  font-size: .72rem;
+  letter-spacing: .12em;
+}
+
+.fate-collection {
+  margin-top: 20px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border);
+}
+
+.event-collection-grid {
+  display: grid;
+  grid-template-columns: repeat(2,1fr);
+  gap: 10px;
+  margin-top: 13px;
+}
+
+.event-card {
+  display: flex;
+  gap: 11px;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 17px;
+  background: var(--surface);
+  opacity: .42;
+  filter: grayscale(.75);
+}
+
+.event-card.discovered {
+  opacity: 1;
+  filter: none;
+}
+
+.event-icon {
+  font-size: 2rem;
+}
+
+.event-card strong {
+  display: block;
+}
+
+.event-card span {
+  display: block;
+  color: var(--muted);
+  font-size: .73rem;
+  margin-top: 2px;
+}
+
+.fate-scene {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 12;
+  overflow: hidden;
+}
+
+.fate-object {
+  position: absolute;
+  font-size: 3rem;
+  animation: fateObject 4.5s ease-in-out forwards;
+}
+
+@keyframes fateObject {
+  0% { opacity: 0; transform: translateY(-20px) scale(.6); }
+  15%, 78% { opacity: 1; transform: translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateY(-10px) scale(.8); }
+}
+
+.fate-banner {
+  position: absolute;
+  left: 50%;
+  top: 18%;
+  transform: translateX(-50%);
+  padding: 10px 15px;
+  border-radius: 999px;
+  background: rgba(16,16,20,.86);
+  color: #fff;
+  font-weight: 950;
+  letter-spacing: .04em;
+  animation: fateBanner 4.5s ease both;
+  white-space: nowrap;
+}
+
+@keyframes fateBanner {
+  0% { opacity: 0; transform: translate(-50%, -12px) scale(.88); }
+  16%, 78% { opacity: 1; transform: translate(-50%,0) scale(1); }
+  100% { opacity: 0; transform: translate(-50%,-10px) scale(.94); }
+}
+
+.road-world.fate-rain {
+  animation: rainyWorld 4.5s ease;
+}
+
+@keyframes rainyWorld {
+  0%,100% { filter: none; }
+  15%,80% { filter: saturate(.65) brightness(.75); }
+}
+
+.road-world.fate-rain::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 11;
+  pointer-events: none;
+  opacity: 0;
+  background:
+    repeating-linear-gradient(
+      110deg,
+      transparent 0 18px,
+      rgba(190,220,255,.6) 18px 20px,
+      transparent 20px 40px
+    );
+  animation: rainOverlay 4.5s linear;
+}
+
+@keyframes rainOverlay {
+  0%,100% { opacity: 0; background-position: 0 0; }
+  15%,80% { opacity: .72; background-position: 120px 200px; }
+}
+
+.vehicle.fate-nitro {
+  animation: nitroRig 2.3s cubic-bezier(.2,.8,.2,1) both;
+}
+
+@keyframes nitroRig {
+  0% { transform: translate(50%,-50%); filter: drop-shadow(0 10px 10px rgba(0,0,0,.25)); }
+  35% { transform: translate(-150%,-50%) scale(1.15); filter: drop-shadow(30px 0 12px rgba(92,182,255,.8)); }
+  65% { transform: translate(-900%,-50%) scale(.7); opacity: .2; }
+  100% { transform: translate(50%,-50%); opacity: 1; }
+}
+
+.vehicle.fate-spin {
+  animation: spinRig 2.7s ease-in-out both;
+}
+
+@keyframes spinRig {
+  0% { transform: translate(50%,-50%) rotate(0); }
+  35% { transform: translate(-60%,-50%) rotate(-360deg) scale(1.2); }
+  70% { transform: translate(-160%,-50%) rotate(-720deg) scale(.9); }
+  100% { transform: translate(50%,-50%) rotate(-720deg); }
+}
+
+.vehicle.fate-abduct {
+  animation: abductRig 3.5s ease-in-out both;
+}
+
+@keyframes abductRig {
+  0%,100% { transform: translate(50%,-50%); opacity: 1; }
+  35% { transform: translate(50%,-260%) scale(.7); opacity: .7; }
+  65% { transform: translate(50%,-300%) scale(.2); opacity: 0; }
+  82% { transform: translate(50%,-180%) scale(.5); opacity: .8; }
+}
+
+.vehicle.fate-bounce {
+  animation: bounceRig 3.2s cubic-bezier(.2,.8,.2,1) both;
+}
+
+@keyframes bounceRig {
+  0%,100% { transform: translate(50%,-50%); }
+  25% { transform: translate(-70%,-190%) rotate(-12deg); }
+  50% { transform: translate(-140%,-50%) rotate(8deg); }
+  75% { transform: translate(-40%,-140%) rotate(-5deg); }
+}
+
+.road-world.fate-rainbow {
+  animation: rainbowWorld 4.8s linear;
+}
+
+@keyframes rainbowWorld {
+  0%,100% { filter: none; }
+  20% { filter: hue-rotate(70deg) saturate(1.8); }
+  45% { filter: hue-rotate(170deg) saturate(2); }
+  70% { filter: hue-rotate(280deg) saturate(1.8); }
+}
+
+@media (max-width: 580px) {
+  .event-collection-grid {
+    grid-template-columns: 1fr;
+  }
+}

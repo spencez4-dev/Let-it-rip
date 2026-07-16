@@ -1,41 +1,51 @@
-LOAD RUSH V2 — INSIGHTS & DAY RECAP
+LOAD RUSH V3 — FREIGHT FATE
 
-NEW FEATURES
-- Daily chart: last 14 days
-- Weekly chart: last 8 weeks
-- Monthly chart: last 12 months
-- Total, average, and best-period metrics
-- Manual Day Recap button
-- Automatic previous-day recap the next time the app opens
-- Automatic recap when the date rolls over while the app is open
-- End-of-day stats:
-  - Net loads
-  - Estimated work time
-  - Best hour
-  - Daily goal percentage
-  - XP earned
-  - Hour-by-hour activity bars
-- Copyable recap text
-- Sound selector:
-  - Engine rev
-  - Arcade
-  - Chime
-  - Clean click
-- Sound preview button
+NEW FEATURE: FREIGHT FATE
+- Optional dice-roll prompt at load milestones.
+- Default frequency: every 10 net loads.
+- The prompt never forces participation.
+- Choose:
+  - Roll Freight Fate
+  - Skip
+- Skipping has no penalty.
+- Frequency options:
+  - Every 10 loads
+  - Every 20 loads
+  - Every 50 loads
+- Freight Fate can be fully disabled in Settings.
+
+EVENTS
+- Nitro Boost
+- Thunder Run
+- Cone Slalom
+- Duck Crossing
+- Speed Trap
+- UFO Abduction
+- Freight Tornado
+- Dino Chase
+- Rainbow Road
+- CEO Visit
+
+RARITIES
+- Common
+- Rare
+- Epic
+- Legendary
+
+EVENT COLLECTION
+The Garage now includes an event collection.
+Discovered Freight Fate events are saved permanently in localStorage.
 
 DATA
-Charts and recaps are generated from the timestamp log already stored in localStorage.
-Garage unlocks, XP, history, race wins, goals, selected rig, and settings persist between sessions.
+All existing history, charts, garage rigs, XP, race wins, settings,
+sound selection, recaps, and discovered Fate events persist between sessions.
 
 UPLOAD
-1. Create or use one final GitHub repository.
-2. Upload every file in this ZIP to the repository root.
-3. Enable GitHub Pages from main / root.
-4. Open once with:
-   ?v=insights-v2
-5. Confirm the bottom-right badge says:
-   LOAD RUSH · V2
-
-IMPORTANT
-Use the same repository URL to preserve current browser data.
-A brand-new repository has a different storage origin; export your old data first and import it into the new app.
+1. Upload every file into the same GitHub repository.
+2. Replace the existing files.
+3. Commit.
+4. Wait for GitHub Pages.
+5. Open once with:
+   ?v=freight-fate-v3
+6. Confirm the badge says:
+   LOAD RUSH · V3
