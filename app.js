@@ -729,6 +729,24 @@ function pendingReminders() {
     .sort((a, b) => reminderTimestamp(a) - reminderTimestamp(b));
 }
 
+
+function showReminderTab(tabName) {
+  const showingList = tabName === 'list';
+
+  $('reminderListPanel').hidden = !showingList;
+  $('reminderFormPanel').hidden = showingList;
+
+  $('viewRemindersTab').classList.toggle('active', showingList);
+  $('newReminderTab').classList.toggle('active', !showingList);
+
+  $('viewRemindersTab').setAttribute('aria-selected', String(showingList));
+  $('newReminderTab').setAttribute('aria-selected', String(!showingList));
+
+  if (!showingList) {
+    setTimeout(() => $('reminderTextInput').focus(), 80);
+  }
+}
+
 function renderReminders() {
   const reminders = pendingReminders();
   const now = Date.now();
@@ -827,6 +845,7 @@ function addReminder() {
 
     saveState();
     renderReminders();
+    showReminderTab('list');
 
     // Reset for the next reminder while keeping the form ready.
     $('reminderTextInput').value = '';
@@ -1524,6 +1543,74 @@ function copySummary() {
   }
 }
 
+
+function bindReminderEventsSafely() {
+  const remindersBtn = $('remindersBtn');
+  const closeBtn = $('closeRemindersBtn');
+  const closeX = $('closeRemindersX');
+  const addBtn = $('addReminderBtn');
+  const enableBtn = $('enableNotificationsBtn');
+  const dismissBtn = $('dismissAlarmBtn');
+  const textInput = $('reminderTextInput');
+  const viewTab = $('viewRemindersTab');
+  const newTab = $('newReminderTab');
+
+  if (remindersBtn && !remindersBtn.dataset.bound) {
+    remindersBtn.dataset.bound = 'true';
+    remindersBtn.addEventListener('click', () => {
+      addBtn.disabled = false;
+      addBtn.textContent = 'Add reminder';
+      renderReminders();
+      showReminderTab('list');
+      openDialog($('remindersDialog'));
+    });
+  }
+
+  if (viewTab && !viewTab.dataset.bound) {
+    viewTab.dataset.bound = 'true';
+    viewTab.addEventListener('click', () => showReminderTab('list'));
+  }
+
+  if (newTab && !newTab.dataset.bound) {
+    newTab.dataset.bound = 'true';
+    newTab.addEventListener('click', () => showReminderTab('form'));
+  }
+
+  if (closeBtn && !closeBtn.dataset.bound) {
+    closeBtn.dataset.bound = 'true';
+    closeBtn.addEventListener('click', () => closeDialog($('remindersDialog')));
+  }
+
+  if (closeX && !closeX.dataset.bound) {
+    closeX.dataset.bound = 'true';
+    closeX.addEventListener('click', () => closeDialog($('remindersDialog')));
+  }
+
+  if (addBtn && !addBtn.dataset.bound) {
+    addBtn.dataset.bound = 'true';
+    addBtn.addEventListener('click', addReminder);
+  }
+
+  if (enableBtn && !enableBtn.dataset.bound) {
+    enableBtn.dataset.bound = 'true';
+    enableBtn.addEventListener('click', requestReminderNotifications);
+  }
+
+  if (dismissBtn && !dismissBtn.dataset.bound) {
+    dismissBtn.dataset.bound = 'true';
+    dismissBtn.addEventListener('click', dismissReminderAlarm);
+  }
+
+  if (textInput && !textInput.dataset.bound) {
+    textInput.dataset.bound = 'true';
+    textInput.addEventListener('keydown', event => {
+      if (event.key === 'Enter') {
+        addReminder();
+      }
+    });
+  }
+}
+
 function bindEvents() {
   $('plusBtn').addEventListener('click', () => addLoad(1));
   $('minusBtn').addEventListener('click', () => addLoad(-1));
@@ -1557,24 +1644,6 @@ function bindEvents() {
   $('garageBtn').addEventListener('click', () => {
     renderGarage();
     openDialog($('garageDialog'));
-  });
-
-  $('remindersBtn').addEventListener('click', () => {
-    renderReminders();
-    openDialog($('remindersDialog'));
-    setTimeout(() => $('reminderTextInput').focus(), 100);
-  });
-
-  $('closeRemindersBtn').addEventListener('click', () => closeDialog($('remindersDialog')));
-  $('closeRemindersX').addEventListener('click', () => closeDialog($('remindersDialog')));
-  $('addReminderBtn').addEventListener('click', addReminder);
-  $('enableNotificationsBtn').addEventListener('click', requestReminderNotifications);
-  $('dismissAlarmBtn').addEventListener('click', dismissReminderAlarm);
-
-  $('reminderTextInput').addEventListener('keydown', event => {
-    if (event.key === 'Enter') {
-      addReminder();
-    }
   });
 
   $('rollFateBtn').addEventListener('click', rollFreightFate);
@@ -1731,7 +1800,7 @@ async function registerServiceWorker() {
   }
 
   try {
-    const registration = await navigator.serviceWorker.register('./sw.js?v=debug-v2', {
+    const registration = await navigator.serviceWorker.register('./sw.js?v=reminders-ui-v3', {
       updateViaCache: 'none'
     });
 
@@ -1767,7 +1836,9 @@ async function registerServiceWorker() {
 }
 
 function initialize() {
+  state.reminders = Array.isArray(state.reminders) ? state.reminders : [];
   bindEvents();
+  bindReminderEventsSafely();
 
   $('reminderDateInput').value = defaultReminderDate();
   $('reminderTimeInput').value = defaultReminderTime();

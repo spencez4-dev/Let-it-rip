@@ -1,7 +1,7 @@
 {
   "name": "Let it Rip: Load Rush",
   "short_name": "Load Rush",
-  "description": "Load Rush with recurring daily Freight Fate milestones and reliable multi-reminder scheduling.",
+  "description": "Load Rush with reliable multi-reminder creation, a visible reminder list, and daily Freight Fate milestones.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

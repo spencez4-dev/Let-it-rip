@@ -18,7 +18,7 @@
         <h1>Let it Rip.</h1>
       </div>
       <div class="top-actions">
-        <button id="remindersBtn" class="reminders-nav-button" type="button">
+        <button id="remindersBtn" class="reminders-nav-button" type="button" aria-haspopup="dialog" aria-controls="remindersDialog">
           <span>⏰</span>
           <span>Reminders</span>
           <b id="reminderBadge" hidden>0</b>
@@ -145,7 +145,7 @@
   <div id="fxLayer" class="fx-layer" aria-hidden="true"></div>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <div id="megaMessage" class="mega-message">CHECKERED FLAG!</div>
-  <div class="build-badge">LOAD RUSH · V3.2</div>
+  <div class="build-badge">LOAD RUSH · V3.3</div>
 
 
   <dialog id="fatePromptDialog" class="fate-dialog">
@@ -186,6 +186,11 @@
         <button id="closeRemindersX" class="icon-button" type="button" aria-label="Close reminders">×</button>
       </div>
 
+      <div id="reminderTabs" class="reminder-tabs" role="tablist" aria-label="Reminder sections">
+        <button id="viewRemindersTab" class="reminder-tab active" type="button" role="tab" aria-selected="true">Upcoming</button>
+        <button id="newReminderTab" class="reminder-tab" type="button" role="tab" aria-selected="false">Add new</button>
+      </div>
+
       <div class="reminder-permission-strip">
         <div>
           <strong>Attention mode</strong>
@@ -194,6 +199,7 @@
         <button id="enableNotificationsBtn" class="secondary-button" type="button">Enable notifications</button>
       </div>
 
+      <div id="reminderFormPanel" class="reminder-form-panel" hidden>
       <div class="reminder-form">
         <label class="reminder-field reminder-message-field">
           <span>What do you need to remember?</span>
@@ -213,12 +219,16 @@
         <button id="addReminderBtn" class="primary-button reminder-add-button" type="button">Add reminder</button>
       </div>
 
+      </div>
+
+      <div id="reminderListPanel">
       <div class="reminder-list-heading">
         <strong>Upcoming</strong>
         <span id="reminderCountLabel">0 reminders</span>
       </div>
 
       <div id="reminderList" class="reminder-list"></div>
+      </div>
 
       <div class="dialog-actions">
         <button id="closeRemindersBtn" class="primary-button" type="button">Done</button>

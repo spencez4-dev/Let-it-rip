@@ -1819,3 +1819,51 @@ body.alarm-active {
     flex-direction: column;
   }
 }
+
+
+.reminder-tabs {
+  display: inline-flex;
+  gap: 6px;
+  margin: 10px 0 16px;
+  padding: 5px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+}
+
+.reminder-tab {
+  min-height: 38px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.reminder-tab.active {
+  background: var(--accent);
+  color: white;
+}
+
+.reminder-form-panel[hidden],
+#reminderListPanel[hidden] {
+  display: none;
+}
+
+#addReminderBtn {
+  pointer-events: auto !important;
+  opacity: 1 !important;
+}
+
+#addReminderBtn:disabled {
+  opacity: .65 !important;
+  cursor: wait;
+}
+
+.reminders-nav-button {
+  pointer-events: auto !important;
+  opacity: 1 !important;
+}
