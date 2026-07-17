@@ -23,6 +23,7 @@ const DEFAULTS = {
   fateEnabled: true,
   fateFrequency: 10,
   lastFateMilestone: 0,
+  lastFateMilestoneDate: '',
   discoveredEvents: [],
   reminders: [],
   lastRecapDate: ''
@@ -361,6 +362,11 @@ function formatDuration(minutes) {
 }
 
 function renderAll() {
+  if (state.lastFateMilestoneDate && state.lastFateMilestoneDate !== todayKey()) {
+    state.lastFateMilestone = 0;
+    state.lastFateMilestoneDate = todayKey();
+    saveState();
+  }
   const today = todayNetLoads();
   const hour = hourNetLoads();
   const lifetime = lifetimeXP();
@@ -766,6 +772,12 @@ function renderReminders() {
 }
 
 function addReminder() {
+  const button = $('addReminderBtn');
+
+  if (button.disabled) {
+    return;
+  }
+
   const text = $('reminderTextInput').value.trim();
   const date = $('reminderDateInput').value;
   const time = $('reminderTimeInput').value;
@@ -788,25 +800,56 @@ function addReminder() {
     return;
   }
 
-  state.reminders.push({
-    id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`,
-    text,
-    date,
-    time,
-    createdAt: new Date().toISOString(),
-    fired: false,
-    dismissed: false
-  });
+  button.disabled = true;
+  button.textContent = 'Adding...';
 
-  saveState();
-  $('reminderTextInput').value = '';
-  $('reminderDateInput').value = defaultReminderDate();
-  $('reminderTimeInput').value = defaultReminderTime();
-  renderReminders();
-  showToast('Reminder armed');
+  try {
+    if (!Array.isArray(state.reminders)) {
+      state.reminders = [];
+    }
+
+    const id = (
+      globalThis.crypto &&
+      typeof globalThis.crypto.randomUUID === 'function'
+    )
+      ? globalThis.crypto.randomUUID()
+      : `reminder-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+    state.reminders.push({
+      id,
+      text,
+      date,
+      time,
+      createdAt: new Date().toISOString(),
+      fired: false,
+      dismissed: false
+    });
+
+    saveState();
+    renderReminders();
+
+    // Reset for the next reminder while keeping the form ready.
+    $('reminderTextInput').value = '';
+    $('reminderDateInput').value = defaultReminderDate();
+    $('reminderTimeInput').value = defaultReminderTime();
+    $('reminderTextInput').focus();
+
+    showToast('Reminder armed');
+  } catch (error) {
+    console.error('Could not add reminder:', error);
+    showToast('Could not save that reminder');
+  } finally {
+    button.disabled = false;
+    button.textContent = 'Add reminder';
+  }
 }
 
 async function requestReminderNotifications() {
+  if ('Notification' in window && Notification.permission === 'granted') {
+    showToast('System notifications are already enabled');
+    return;
+  }
+
   if (!('Notification' in window)) {
     showToast('This browser does not support system notifications');
     return;
@@ -818,7 +861,7 @@ async function requestReminderNotifications() {
     if (permission === 'granted') {
       showToast('System notifications enabled');
       $('enableNotificationsBtn').textContent = 'Notifications enabled';
-      $('enableNotificationsBtn').disabled = true;
+      $('enableNotificationsBtn').disabled = false;
     } else {
       showToast('Notifications were not enabled');
     }
@@ -909,6 +952,7 @@ function triggerReminderAlarm(reminder) {
 
   activeReminderId = reminder.id;
   reminder.fired = true;
+  reminder.dismissed = false;
   saveState();
   renderReminders();
 
@@ -963,7 +1007,9 @@ function checkReminders() {
   const now = Date.now();
   const due = pendingReminders().find(reminder => {
     const timestamp = reminderTimestamp(reminder);
-    return timestamp <= now && !reminder.fired;
+
+    // Re-fire an overdue reminder after a reload if it was never dismissed.
+    return timestamp <= now && (!reminder.fired || !reminder.dismissed);
   });
 
   if (due) {
@@ -990,14 +1036,22 @@ function shouldPromptFate() {
     return false;
   }
 
+  const today = todayKey();
   const frequency = Math.max(1, Number(state.fateFrequency) || 10);
   const loads = todayNetLoads();
+
+  // Reset the remembered milestone when a new day begins.
+  if (state.lastFateMilestoneDate !== today) {
+    state.lastFateMilestoneDate = today;
+    state.lastFateMilestone = 0;
+    saveState();
+  }
 
   if (loads <= 0 || loads % frequency !== 0) {
     return false;
   }
 
-  return loads > (state.lastFateMilestone || 0);
+  return loads > Number(state.lastFateMilestone || 0);
 }
 
 function promptFreightFate() {
@@ -1005,6 +1059,7 @@ function promptFreightFate() {
 
   pendingFateMilestone = loads;
   state.lastFateMilestone = loads;
+  state.lastFateMilestoneDate = todayKey();
   saveState();
 
   $('fatePromptTitle').textContent = `${loads} loads tracked!`;
@@ -1676,7 +1731,7 @@ async function registerServiceWorker() {
   }
 
   try {
-    const registration = await navigator.serviceWorker.register('./sw.js?v=reminders-v1', {
+    const registration = await navigator.serviceWorker.register('./sw.js?v=debug-v2', {
       updateViaCache: 'none'
     });
 
