@@ -1867,3 +1867,23 @@ body.alarm-active {
   pointer-events: auto !important;
   opacity: 1 !important;
 }
+
+
+#remindersBtn {
+  position: relative;
+  z-index: 20;
+  pointer-events: auto !important;
+}
+
+#remindersBtn * {
+  pointer-events: none;
+}
+
+#reminderBadge {
+  pointer-events: none;
+}
+
+.top-actions {
+  position: relative;
+  z-index: 20;
+}

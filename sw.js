@@ -1,4 +1,4 @@
-const CACHE = 'load-rush-v3-reminders-ui-v3';
+const CACHE = 'load-rush-v3-reminder-button-v4';
 const CORE = [
   './',
   './index.html',

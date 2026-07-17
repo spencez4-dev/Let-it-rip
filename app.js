@@ -1545,62 +1545,62 @@ function copySummary() {
 
 
 function bindReminderEventsSafely() {
-  const remindersBtn = $('remindersBtn');
-  const closeBtn = $('closeRemindersBtn');
-  const closeX = $('closeRemindersX');
-  const addBtn = $('addReminderBtn');
-  const enableBtn = $('enableNotificationsBtn');
-  const dismissBtn = $('dismissAlarmBtn');
-  const textInput = $('reminderTextInput');
-  const viewTab = $('viewRemindersTab');
-  const newTab = $('newReminderTab');
+  if (document.documentElement.dataset.reminderEventsBound === 'true') {
+    return;
+  }
 
-  if (remindersBtn && !remindersBtn.dataset.bound) {
-    remindersBtn.dataset.bound = 'true';
-    remindersBtn.addEventListener('click', () => {
-      addBtn.disabled = false;
-      addBtn.textContent = 'Add reminder';
+  document.documentElement.dataset.reminderEventsBound = 'true';
+
+  document.addEventListener('click', event => {
+    const remindersButton = event.target.closest('#remindersBtn');
+    if (remindersButton) {
+      event.preventDefault();
+      event.stopPropagation();
+
+      const addButton = $('addReminderBtn');
+      if (addButton) {
+        addButton.disabled = false;
+        addButton.textContent = 'Add reminder';
+      }
+
       renderReminders();
       showReminderTab('list');
       openDialog($('remindersDialog'));
-    });
-  }
+      return;
+    }
 
-  if (viewTab && !viewTab.dataset.bound) {
-    viewTab.dataset.bound = 'true';
-    viewTab.addEventListener('click', () => showReminderTab('list'));
-  }
+    if (event.target.closest('#viewRemindersTab')) {
+      showReminderTab('list');
+      return;
+    }
 
-  if (newTab && !newTab.dataset.bound) {
-    newTab.dataset.bound = 'true';
-    newTab.addEventListener('click', () => showReminderTab('form'));
-  }
+    if (event.target.closest('#newReminderTab')) {
+      showReminderTab('form');
+      return;
+    }
 
-  if (closeBtn && !closeBtn.dataset.bound) {
-    closeBtn.dataset.bound = 'true';
-    closeBtn.addEventListener('click', () => closeDialog($('remindersDialog')));
-  }
+    if (event.target.closest('#closeRemindersBtn') || event.target.closest('#closeRemindersX')) {
+      closeDialog($('remindersDialog'));
+      return;
+    }
 
-  if (closeX && !closeX.dataset.bound) {
-    closeX.dataset.bound = 'true';
-    closeX.addEventListener('click', () => closeDialog($('remindersDialog')));
-  }
+    if (event.target.closest('#addReminderBtn')) {
+      addReminder();
+      return;
+    }
 
-  if (addBtn && !addBtn.dataset.bound) {
-    addBtn.dataset.bound = 'true';
-    addBtn.addEventListener('click', addReminder);
-  }
+    if (event.target.closest('#enableNotificationsBtn')) {
+      requestReminderNotifications();
+      return;
+    }
 
-  if (enableBtn && !enableBtn.dataset.bound) {
-    enableBtn.dataset.bound = 'true';
-    enableBtn.addEventListener('click', requestReminderNotifications);
-  }
+    if (event.target.closest('#dismissAlarmBtn')) {
+      dismissReminderAlarm();
+      return;
+    }
+  });
 
-  if (dismissBtn && !dismissBtn.dataset.bound) {
-    dismissBtn.dataset.bound = 'true';
-    dismissBtn.addEventListener('click', dismissReminderAlarm);
-  }
-
+  const textInput = $('reminderTextInput');
   if (textInput && !textInput.dataset.bound) {
     textInput.dataset.bound = 'true';
     textInput.addEventListener('keydown', event => {
@@ -1800,7 +1800,7 @@ async function registerServiceWorker() {
   }
 
   try {
-    const registration = await navigator.serviceWorker.register('./sw.js?v=reminders-ui-v3', {
+    const registration = await navigator.serviceWorker.register('./sw.js?v=reminder-button-v4', {
       updateViaCache: 'none'
     });
 
@@ -1839,6 +1839,24 @@ function initialize() {
   state.reminders = Array.isArray(state.reminders) ? state.reminders : [];
   bindEvents();
   bindReminderEventsSafely();
+
+  const remindersButton = $('remindersBtn');
+  if (remindersButton) {
+    remindersButton.onclick = event => {
+      event.preventDefault();
+      event.stopPropagation();
+
+      const addButton = $('addReminderBtn');
+      if (addButton) {
+        addButton.disabled = false;
+        addButton.textContent = 'Add reminder';
+      }
+
+      renderReminders();
+      showReminderTab('list');
+      openDialog($('remindersDialog'));
+    };
+  }
 
   $('reminderDateInput').value = defaultReminderDate();
   $('reminderTimeInput').value = defaultReminderTime();
