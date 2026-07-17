@@ -1,4 +1,4 @@
-const CACHE = 'load-rush-v3-freight-fate';
+const CACHE = 'load-rush-v3-reminders-v1';
 const CORE = [
   './',
   './index.html',

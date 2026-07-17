@@ -18,6 +18,11 @@
         <h1>Let it Rip.</h1>
       </div>
       <div class="top-actions">
+        <button id="remindersBtn" class="reminders-nav-button" type="button">
+          <span>⏰</span>
+          <span>Reminders</span>
+          <b id="reminderBadge" hidden>0</b>
+        </button>
         <button id="themeBtn" class="icon-button" type="button" aria-label="Toggle theme">☾</button>
         <button id="settingsBtn" class="icon-button" type="button" aria-label="Open settings">⚙</button>
       </div>
@@ -140,7 +145,7 @@
   <div id="fxLayer" class="fx-layer" aria-hidden="true"></div>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <div id="megaMessage" class="mega-message">CHECKERED FLAG!</div>
-  <div class="build-badge">LOAD RUSH · V3</div>
+  <div class="build-badge">LOAD RUSH · V3.1</div>
 
 
   <dialog id="fatePromptDialog" class="fate-dialog">
@@ -169,6 +174,69 @@
       </div>
     </div>
   </dialog>
+
+
+  <dialog id="remindersDialog" class="wide-dialog reminders-dialog">
+    <div class="dialog-content">
+      <div class="section-heading">
+        <div>
+          <span class="section-kicker">DON'T FORGET</span>
+          <h2>Reminders</h2>
+        </div>
+        <button id="closeRemindersX" class="icon-button" type="button" aria-label="Close reminders">×</button>
+      </div>
+
+      <div class="reminder-permission-strip">
+        <div>
+          <strong>Attention mode</strong>
+          <span>Full-screen alarm always works while the app is open. Browser notifications can also appear when the tab is in the background.</span>
+        </div>
+        <button id="enableNotificationsBtn" class="secondary-button" type="button">Enable notifications</button>
+      </div>
+
+      <div class="reminder-form">
+        <label class="reminder-field reminder-message-field">
+          <span>What do you need to remember?</span>
+          <input id="reminderTextInput" type="text" maxlength="120" placeholder="Call this guy" autocomplete="off">
+        </label>
+
+        <label class="reminder-field">
+          <span>Date</span>
+          <input id="reminderDateInput" type="date">
+        </label>
+
+        <label class="reminder-field">
+          <span>Time</span>
+          <input id="reminderTimeInput" type="time">
+        </label>
+
+        <button id="addReminderBtn" class="primary-button reminder-add-button" type="button">Add reminder</button>
+      </div>
+
+      <div class="reminder-list-heading">
+        <strong>Upcoming</strong>
+        <span id="reminderCountLabel">0 reminders</span>
+      </div>
+
+      <div id="reminderList" class="reminder-list"></div>
+
+      <div class="dialog-actions">
+        <button id="closeRemindersBtn" class="primary-button" type="button">Done</button>
+      </div>
+    </div>
+  </dialog>
+
+  <div id="reminderAlarm" class="reminder-alarm" hidden aria-live="assertive" role="alertdialog" aria-modal="true">
+    <div class="alarm-strobe"></div>
+    <div class="alarm-panel">
+      <div class="alarm-icon">🚨</div>
+      <span class="alarm-kicker">REMINDER</span>
+      <h2 id="alarmReminderText">Call this guy</h2>
+      <div id="alarmReminderTime" class="alarm-time">08:30</div>
+      <p>This is your aggressively noticeable reminder.</p>
+      <button id="dismissAlarmBtn" class="alarm-dismiss-button" type="button">I GOT IT</button>
+    </div>
+  </div>
 
   <dialog id="garageDialog">
     <div class="dialog-content">

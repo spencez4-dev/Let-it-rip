@@ -24,6 +24,7 @@ const DEFAULTS = {
   fateFrequency: 10,
   lastFateMilestone: 0,
   discoveredEvents: [],
+  reminders: [],
   lastRecapDate: ''
 };
 
@@ -224,6 +225,10 @@ let activeChartPeriod = 'daily';
 let currentSummaryDate = todayKey();
 let pendingFateMilestone = null;
 let activeFateTimeout = null;
+let activeReminderId = null;
+let alarmAudioContext = null;
+let alarmOscillators = [];
+let alarmPulseTimer = null;
 
 function saveState() {
   const clean = {
@@ -676,6 +681,295 @@ function maybeAwardRace() {
   showToast(`Hourly race won · ${state.raceWins} total`);
 }
 
+
+
+function defaultReminderDate() {
+  return todayKey();
+}
+
+function defaultReminderTime() {
+  const date = new Date(Date.now() + 5 * 60 * 1000);
+  return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+}
+
+function reminderTimestamp(reminder) {
+  return new Date(`${reminder.date}T${reminder.time}:00`).getTime();
+}
+
+function reminderDateLabel(reminder) {
+  const date = new Date(`${reminder.date}T${reminder.time}:00`);
+  const today = todayKey();
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const tomorrowKey = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, '0')}-${String(tomorrow.getDate()).padStart(2, '0')}`;
+
+  let prefix = date.toLocaleDateString([], {
+    month: 'short',
+    day: 'numeric'
+  });
+
+  if (reminder.date === today) prefix = 'Today';
+  if (reminder.date === tomorrowKey) prefix = 'Tomorrow';
+
+  return `${prefix} at ${date.toLocaleTimeString([], {
+    hour: 'numeric',
+    minute: '2-digit'
+  })}`;
+}
+
+function pendingReminders() {
+  return (state.reminders || [])
+    .filter(reminder => !reminder.dismissed)
+    .sort((a, b) => reminderTimestamp(a) - reminderTimestamp(b));
+}
+
+function renderReminders() {
+  const reminders = pendingReminders();
+  const now = Date.now();
+
+  $('reminderCountLabel').textContent = `${reminders.length} reminder${reminders.length === 1 ? '' : 's'}`;
+  $('reminderBadge').textContent = String(reminders.length);
+  $('reminderBadge').hidden = reminders.length === 0;
+
+  if (!reminders.length) {
+    $('reminderList').innerHTML = `
+      <div class="reminder-empty">
+        Nothing scheduled. Add something before your brain decides it was never important.
+      </div>
+    `;
+    return;
+  }
+
+  $('reminderList').innerHTML = reminders.map(reminder => {
+    const overdue = reminderTimestamp(reminder) <= now;
+
+    return `
+      <div class="reminder-item ${overdue ? 'overdue' : ''}">
+        <div class="reminder-clock">${overdue ? '🚨' : '⏰'}</div>
+        <div class="reminder-item-copy">
+          <strong>${escapeHtml(reminder.text)}</strong>
+          <span>${reminderDateLabel(reminder)}${overdue ? ' · DUE NOW' : ''}</span>
+        </div>
+        <button class="reminder-delete-button" data-reminder-delete="${reminder.id}" type="button">Delete</button>
+      </div>
+    `;
+  }).join('');
+
+  document.querySelectorAll('[data-reminder-delete]').forEach(button => {
+    button.addEventListener('click', () => {
+      state.reminders = state.reminders.filter(reminder => reminder.id !== button.dataset.reminderDelete);
+      saveState();
+      renderReminders();
+      showToast('Reminder deleted');
+    });
+  });
+}
+
+function addReminder() {
+  const text = $('reminderTextInput').value.trim();
+  const date = $('reminderDateInput').value;
+  const time = $('reminderTimeInput').value;
+
+  if (!text) {
+    showToast('Enter what you need to remember');
+    $('reminderTextInput').focus();
+    return;
+  }
+
+  if (!date || !time) {
+    showToast('Choose a date and time');
+    return;
+  }
+
+  const timestamp = new Date(`${date}T${time}:00`).getTime();
+
+  if (!Number.isFinite(timestamp)) {
+    showToast('That date or time is invalid');
+    return;
+  }
+
+  state.reminders.push({
+    id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`,
+    text,
+    date,
+    time,
+    createdAt: new Date().toISOString(),
+    fired: false,
+    dismissed: false
+  });
+
+  saveState();
+  $('reminderTextInput').value = '';
+  $('reminderDateInput').value = defaultReminderDate();
+  $('reminderTimeInput').value = defaultReminderTime();
+  renderReminders();
+  showToast('Reminder armed');
+}
+
+async function requestReminderNotifications() {
+  if (!('Notification' in window)) {
+    showToast('This browser does not support system notifications');
+    return;
+  }
+
+  try {
+    const permission = await Notification.requestPermission();
+
+    if (permission === 'granted') {
+      showToast('System notifications enabled');
+      $('enableNotificationsBtn').textContent = 'Notifications enabled';
+      $('enableNotificationsBtn').disabled = true;
+    } else {
+      showToast('Notifications were not enabled');
+    }
+  } catch {
+    showToast('Could not enable notifications');
+  }
+}
+
+function sendSystemReminder(reminder) {
+  if (!('Notification' in window) || Notification.permission !== 'granted') {
+    return;
+  }
+
+  try {
+    const notification = new Notification('🚨 LOAD RUSH REMINDER', {
+      body: reminder.text,
+      icon: 'icon-192.png',
+      badge: 'icon-192.png',
+      tag: `load-rush-reminder-${reminder.id}`,
+      requireInteraction: true
+    });
+
+    notification.onclick = () => {
+      window.focus();
+      notification.close();
+    };
+  } catch {
+    // The in-app alarm still runs even if the browser blocks this.
+  }
+}
+
+function startReminderSiren() {
+  stopReminderSiren();
+
+  try {
+    alarmAudioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+    const gain = alarmAudioContext.createGain();
+    gain.gain.value = .16;
+    gain.connect(alarmAudioContext.destination);
+
+    const createTone = (frequency, type) => {
+      const oscillator = alarmAudioContext.createOscillator();
+      oscillator.type = type;
+      oscillator.frequency.value = frequency;
+      oscillator.connect(gain);
+      oscillator.start();
+      alarmOscillators.push(oscillator);
+    };
+
+    createTone(720, 'square');
+    createTone(960, 'sawtooth');
+
+    let high = false;
+    alarmPulseTimer = setInterval(() => {
+      if (!alarmAudioContext) return;
+
+      high = !high;
+      const time = alarmAudioContext.currentTime;
+      alarmOscillators[0]?.frequency.setValueAtTime(high ? 880 : 620, time);
+      alarmOscillators[1]?.frequency.setValueAtTime(high ? 1180 : 810, time);
+    }, 360);
+  } catch {
+    // Visual alarm and vibration remain available.
+  }
+}
+
+function stopReminderSiren() {
+  clearInterval(alarmPulseTimer);
+  alarmPulseTimer = null;
+
+  alarmOscillators.forEach(oscillator => {
+    try { oscillator.stop(); } catch {}
+  });
+
+  alarmOscillators = [];
+
+  if (alarmAudioContext) {
+    try { alarmAudioContext.close(); } catch {}
+    alarmAudioContext = null;
+  }
+}
+
+function triggerReminderAlarm(reminder) {
+  if (activeReminderId) {
+    return;
+  }
+
+  activeReminderId = reminder.id;
+  reminder.fired = true;
+  saveState();
+  renderReminders();
+
+  $('alarmReminderText').textContent = reminder.text;
+  $('alarmReminderTime').textContent = new Date(`${reminder.date}T${reminder.time}:00`)
+    .toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+
+  $('reminderAlarm').hidden = false;
+  document.body.classList.add('alarm-active');
+
+  startReminderSiren();
+  sendSystemReminder(reminder);
+
+  if ('vibrate' in navigator) {
+    navigator.vibrate([500, 180, 500, 180, 900, 250, 900]);
+  }
+
+  document.title = `🚨 ${reminder.text}`;
+
+  try {
+    window.focus();
+  } catch {}
+}
+
+function dismissReminderAlarm() {
+  const reminder = state.reminders.find(item => item.id === activeReminderId);
+
+  if (reminder) {
+    reminder.dismissed = true;
+  }
+
+  saveState();
+  activeReminderId = null;
+  $('reminderAlarm').hidden = true;
+  document.body.classList.remove('alarm-active');
+  document.title = 'Let it Rip';
+  stopReminderSiren();
+
+  if ('vibrate' in navigator) {
+    navigator.vibrate(0);
+  }
+
+  renderReminders();
+  showToast('Reminder dismissed');
+}
+
+function checkReminders() {
+  if (activeReminderId) {
+    return;
+  }
+
+  const now = Date.now();
+  const due = pendingReminders().find(reminder => {
+    const timestamp = reminderTimestamp(reminder);
+    return timestamp <= now && !reminder.fired;
+  });
+
+  if (due) {
+    triggerReminderAlarm(due);
+  }
+}
 
 function weightedFateRoll() {
   const total = FATE_EVENTS.reduce((sum, event) => sum + event.weight, 0);
@@ -1210,6 +1504,24 @@ function bindEvents() {
     openDialog($('garageDialog'));
   });
 
+  $('remindersBtn').addEventListener('click', () => {
+    renderReminders();
+    openDialog($('remindersDialog'));
+    setTimeout(() => $('reminderTextInput').focus(), 100);
+  });
+
+  $('closeRemindersBtn').addEventListener('click', () => closeDialog($('remindersDialog')));
+  $('closeRemindersX').addEventListener('click', () => closeDialog($('remindersDialog')));
+  $('addReminderBtn').addEventListener('click', addReminder);
+  $('enableNotificationsBtn').addEventListener('click', requestReminderNotifications);
+  $('dismissAlarmBtn').addEventListener('click', dismissReminderAlarm);
+
+  $('reminderTextInput').addEventListener('keydown', event => {
+    if (event.key === 'Enter') {
+      addReminder();
+    }
+  });
+
   $('rollFateBtn').addEventListener('click', rollFreightFate);
   $('skipFateBtn').addEventListener('click', skipFreightFate);
   $('closeFateResultBtn').addEventListener('click', () => {
@@ -1350,6 +1662,10 @@ function bindEvents() {
       if ($('fateResultDialog').open) {
         closeDialog($('fateResultDialog'));
       }
+
+      if ($('remindersDialog').open) {
+        closeDialog($('remindersDialog'));
+      }
     }
   });
 }
@@ -1360,7 +1676,7 @@ async function registerServiceWorker() {
   }
 
   try {
-    const registration = await navigator.serviceWorker.register('./sw.js?v=ultimate-1', {
+    const registration = await navigator.serviceWorker.register('./sw.js?v=reminders-v1', {
       updateViaCache: 'none'
     });
 
@@ -1397,9 +1713,21 @@ async function registerServiceWorker() {
 
 function initialize() {
   bindEvents();
+
+  $('reminderDateInput').value = defaultReminderDate();
+  $('reminderTimeInput').value = defaultReminderTime();
+
+  if ('Notification' in window && Notification.permission === 'granted') {
+    $('enableNotificationsBtn').textContent = 'Notifications enabled';
+    $('enableNotificationsBtn').disabled = true;
+  }
+
   renderAll();
+  renderReminders();
   tickClock();
+  checkReminders();
   setInterval(tickClock, 1000);
+  setInterval(checkReminders, 1000);
   setTimeout(maybeShowAutomaticRecap, 600);
   registerServiceWorker();
 }
